@@ -67,7 +67,7 @@ async function processAgentAsync(chatId, userMessage) {
       { chat_id: chatId, role: 'user', content: userMessage }
     ]);
 
-    // 3. 调用大模型 API (以 DeepSeek / OpenAI 为例)
+    // 3. 调用大模型 API (以 DeepSeek 为例)
     const llmResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
