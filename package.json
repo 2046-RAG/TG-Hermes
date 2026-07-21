@@ -1,5 +1,5 @@
 {
-  "name": "hermes-feishu-agent",
+  "name": "hermes-lark-agent",
   "version": "1.0.0",
   "main": "api/feishu.js",
   "dependencies": {
