@@ -1,21 +1,21 @@
 const { createClient } = require('@supabase/supabase-js');
 const fetch = require('node-fetch');
 
-// 初始化 Supabase 客户端
+// 初始化 Supabase 数据库客户端
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
 module.exports = async (req, res) => {
-  // 只接收 POST 请求
+  // 仅接收 POST 请求
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   const body = req.body || {};
 
-  // 1. 响应飞书开放平台的 URL 校验事件 (第一次配置 Webhook 时触发)
+  // 1. 响应 Lark 开放平台的 URL 校验事件 (首次配置 Webhook 时触发)
   if (body.type === 'url_verification') {
     return res.status(200).json({ challenge: body.challenge });
   }
@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
     });
 
     // -------------------------------------------------------------
-    // 【强行 100ms 秒回】：立刻向飞书返回 200 OK，防止飞书认为 3s 超时
+    // 【强行 100ms 秒回】：立刻向 Lark 返回 200 OK，防止 Lark 认为 3s 超时
     // -------------------------------------------------------------
     return res.status(200).json({ code: 0, msg: "success" });
   }
@@ -77,42 +77,42 @@ async function processAgentAsync(chatId, userMessage) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: '你是由 Hermes 架构驱动的智能团队助手。' },
+          { role: 'system', content: 'You are an intelligent team assistant powered by Hermes architecture.' },
           ...messages
         ]
       })
     }).then(r => r.json());
 
-    const aiReply = llmResponse.choices?.[0]?.message?.content || "抱歉，思考过程中遇到了点小问题。";
+    const aiReply = llmResponse.choices?.[0]?.message?.content || "Sorry, I encountered an issue while processing.";
 
     // 4. 将 AI 思考结果存入 Supabase 记忆库
     await supabase.from('chat_memories').insert([
       { chat_id: chatId, role: 'assistant', content: aiReply }
     ]);
 
-    // 5. 调用飞书 Open API 主动回复消息给用户
-    await sendFeishuMessage(chatId, aiReply);
+    // 5. 调用 Lark Open API 主动回复消息给用户
+    await sendLarkMessage(chatId, aiReply);
   } catch (error) {
     console.error('processAgentAsync 报错:', error);
   }
 }
 
-// 辅助函数：获取飞书 tenant_access_token 并发送消息
-async function sendFeishuMessage(chatId, text) {
-  // 获取 token
-  const tokenRes = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+// 辅助函数：获取 Lark tenant_access_token 并发送消息
+async function sendLarkMessage(chatId, text) {
+  // 获取 token (使用 Lark 官方国际域名 open.larksuite.com)
+  const tokenRes = await fetch('https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      app_id: process.env.FEISHU_APP_ID,
-      app_secret: process.env.FEISHU_APP_SECRET
+      app_id: process.env.LARK_APP_ID,
+      app_secret: process.env.LARK_APP_SECRET
     })
   }).then(r => r.json());
 
   const accessToken = tokenRes.tenant_access_token;
 
   // 发送消息
-  await fetch(`https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id`, {
+  await fetch(`https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
